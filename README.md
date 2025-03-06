@@ -1,7 +1,4 @@
-<<<<<<< HEAD
-=======
 # CIS-574-Syntax-Analysis
->>>>>>> 14022983c82e29ae56978bf271898965193a38e1
 # DLang Parser
 This project implements a syntax analyzer (parser) for DLang, a custom programming language. The parser is built using the SLY (Sly Lex Yacc) library in Python.
 
