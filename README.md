@@ -1,3 +1,7 @@
+<<<<<<< HEAD
+=======
+# CIS-574-Syntax-Analysis
+>>>>>>> 14022983c82e29ae56978bf271898965193a38e1
 # DLang Parser
 This project implements a syntax analyzer (parser) for DLang, a custom programming language. The parser is built using the SLY (Sly Lex Yacc) library in Python.
 
@@ -14,6 +18,7 @@ This project implements a syntax analyzer (parser) for DLang, a custom programmi
 
 To install SLY, run:
 pip install sly
+<<<<<<< HEAD
 
 ## Usage
 1. Saved the parser code as `Syntax_Analysis.py`.
@@ -53,3 +58,5 @@ The parser provides error messages for:
 ## Limitations
 - The parser may have some shift/reduce conflicts due to the nature of the SLY LALR(1) parser generator.
 - Error recovery is limited; the parser will stop at the first syntax error encountered.
+=======
+>>>>>>> 14022983c82e29ae56978bf271898965193a38e1
