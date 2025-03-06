@@ -1,0 +1,5 @@
+// test variable declarations
+int a;
+double b;
+bool c;
+string d;
