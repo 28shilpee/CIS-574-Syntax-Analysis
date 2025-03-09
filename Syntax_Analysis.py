@@ -1,249 +1,290 @@
+import sys
 from sly import Lexer, Parser
 
 class DLangLexer(Lexer):
-    tokens = {IDENT, INT_TYPE, DOUBLE_TYPE, BOOL_TYPE, STRING_TYPE, INT_CONST, DOUBLE_CONST, BOOL_CONST, STRING_CONST,
-              IF, ELSE, WHILE, FOR, RETURN, BREAK, OUTPUT, INPUTINT, INPUTLINE, NOTHING, NULL,
-              LE, GE, EQ, NE, AND, OR}
-    literals = {';', ',', '(', ')', '{', '}', '=', '+', '-', '*', '/', '%', '<', '>', '!'}
 
-    ignore = ' \t'
+    # Define names of tokens
+    tokens ={LE, GE, EQ, NE, AND, OR, INT, DOUBLE, STRING, IDENTIFIER, NOTHING, INTK, DOUBLEK, BOOL, BOOLK, STRINGK, INTERFACE, NULL, FOR, WHILE, IF, ELSE, RETURN, BREAK, ARRAYINSTANCE, OUTPUT, INPUTINT, INPUTLINE}
+    
+    # Single-character literals can be recognized without token names
+    # If you use separate tokens for each literal, that is fine too
+    literals = {'+', '-', '*', '/', '%', '<', '>', '=','!', ';', ',', '.', '[', ']','(',')','{','}'}
+    
+    # Specify things to ignore
+    ignore = ' \t\r' # space, tab, and carriage return
+    ignore_comment1= r'\/\*[^"]*\*\/' # c-style multi-line comment (note: test with input from file)
+    ignore_comment = r'\/\/.*' # single line comment
+    ignore_newline=r'\n+' # end of line
 
-    # Ignore comments
-    ignore_comment = r'//.*'
-
-    # Keywords
-    INT_TYPE = r'int'
-    DOUBLE_TYPE = r'double'
-    BOOL_TYPE = r'bool'
-    STRING_TYPE = r'string'
-    IF = r'if'
-    ELSE = r'else'
-    WHILE = r'while'
-    FOR = r'for'
-    RETURN = r'return'
-    BREAK = r'break'
-    OUTPUT = r'Output'
-    INPUTINT = r'InputInt'
-    INPUTLINE = r'InputLine'
-    NOTHING = r'nothing'
-    NULL = r'null'
-
-    # Tokens
-    IDENT = r'[a-zA-Z_][a-zA-Z0-9_]*'
-    INT_CONST = r'\d+'
-    DOUBLE_CONST = r'\d+\.\d*'
-    BOOL_CONST = r'true|false'
-    STRING_CONST = r'"[^"]*"'
-
-    # Multi-character operators
-    LE = r'<='
-    GE = r'>='
+    # Specify REs for each token
+    STRING = r'\"(.)*\"'
+    DOUBLE = r'[0-9]+\.[0-9]*([E][+-]?\d+)?'
+    INT = r'[0-9]+'
     EQ = r'=='
     NE = r'!='
-    AND = r'&&'
-    OR = r'\|\|'
+    LE = r'<='
+    GE = r'>='
+    AND = r'&&' 
+    OR =  r'\|\|'
+    IDENTIFIER = r'[a-zA-Z_][a-zA-Z0-9_]{0,49}'
 
-    @_(r'\n+')
-    def newline(self, t):
-        self.lineno += t.value.count('\n')
+    @_(STRING)
+    def STRING_VAL(self, t):
+        t.value = str(t.value)
+        return t
 
-    def error(self, t):
-        print(f"Illegal character '{t.value[0]}' at line {self.lineno}")
-        self.index += 1
+    @_(INT)
+    def NUMBER_INT(self, t):
+        t.value = int(t.value)
+        return t
+
+    @_(DOUBLE)
+    def NUMBER_DOUBLE(self, t):
+        t.value = float(t.value)
+        return t
+
+    @_(r'True')
+    def BOOL_TRUE(self, t):
+        return True
+
+    @_(r'False')
+    def BOOL_FALSE(self, t):
+        return False
+
+    # IDENTIFIER lexemes overlap with keywords.
+    # To avoid confusion, we do token remaping.
+    # Alternatively, you can specify each keywork before IDENTIFIER
+    IDENTIFIER['nothing'] = NOTHING
+    IDENTIFIER['int'] = INTK
+    IDENTIFIER['double'] = DOUBLEK
+    IDENTIFIER['string'] = STRINGK
+    IDENTIFIER['bool'] = BOOLK
+    IDENTIFIER['True'] = BOOL
+    IDENTIFIER['False'] = BOOL
+    IDENTIFIER['null'] = NULL
+    IDENTIFIER['for'] = FOR
+    IDENTIFIER['while'] = WHILE
+    IDENTIFIER['if'] = IF
+    IDENTIFIER['else'] = ELSE
+    IDENTIFIER['return'] = RETURN
+    IDENTIFIER['ArrayInstance'] = ARRAYINSTANCE
+    IDENTIFIER['Output'] = OUTPUT
+    IDENTIFIER['InputInt'] = INPUTINT
+    IDENTIFIER['InputLine'] = INPUTLINE
+
+
+    def error(self,t):
+        print ("Invalid character '%s'" % t.value[0])
+        self.index+=1
 
 class DLangParser(Parser):
-    tokens = DLangLexer.tokens
 
+    tokens = DLangLexer.tokens
     precedence = (
-        ('nonassoc', IF),
-        ('nonassoc', ELSE),
-        ('right', '='),
-        ('left', OR),
-        ('left', AND),
-        ('nonassoc', EQ, NE, '<', '>', LE, GE),
+        ('nonassoc', EQ, NE, LE, GE, AND, OR, '<', '>'),
         ('left', '+', '-'),
         ('left', '*', '/', '%'),
-        ('right', UMINUS, '!'),
+        ('right', 'UMINUS'),
+        ('nonassoc', '=')
     )
 
+    def __init__(self):
+        self.IDENTIFIERs = { }
+
+
+    # Program -> Decl+
     @_('Decls')
-    def Program(self, p):
-        print("Found Program")
-
-    @_('Decl Decls')
+    def Program(self, p): 
+        print('Parsing completed successfully!') # If we get here with no issues, bottom-up parsing is successful!
+        return p
+    
+    @_('Decl Decls ','Decl')
     def Decls(self, p):
-        return [p.Decl] + p.Decls
+        #print(p)
+        return p
+    
 
-    @_('Decl')
-    def Decls(self, p):
-        return [p.Decl]
-
+    # Decl -> VariableDecl | FunctionDecl
     @_('VariableDecl', 'FunctionDecl')
     def Decl(self, p):
-        print(f"Found {p[0]}")
+        # print('Found Decl')
+        return p
 
+    # VariableDecl -> Variable;
     @_('Variable ";"')
     def VariableDecl(self, p):
-        print("Found VariableDecl")
+        print('Found VariableDecl')
+        return p
 
-    @_('Type IDENT')
+    # Variable -> Type ident
+    @_('Type IDENTIFIER')
     def Variable(self, p):
-        print(f"Found Variable: {p.Type} {p.IDENT}")
+        return p
 
-    @_('INT_TYPE', 'DOUBLE_TYPE', 'BOOL_TYPE', 'STRING_TYPE')
+    # Type -> int | double | bool | string    
+    @_('INTK', 'DOUBLEK', 'BOOLK', 'STRINGK')
     def Type(self, p):
-        return p[0]
+        return p
 
-    @_('Type IDENT "(" Formals ")" StmtBlock',
-       'NOTHING IDENT "(" Formals ")" StmtBlock')
+    # Define parsing rules for function declarations, either with or without return types.
+    @_('Type IDENTIFIER "(" Formals ")" StmtBlock', 'NOTHING IDENTIFIER "(" Formals ")" StmtBlock', )
     def FunctionDecl(self, p):
-        print(f"Found FunctionDecl: {p[0]} {p.IDENT}")
+        print('Found Function Declaration')
+        return p
 
-    @_('VariableList', '')
-    def Formals(self, p):
-        print("Found Formals")
-
-    @_('Variable "," VariableList')
-    def VariableList(self, p):
-        return [p.Variable] + p.VariableList
-
-    @_('Variable')
-    def VariableList(self, p):
-        return [p.Variable]
-
-    @_('"{" VariableDeclList StmtList "}"')
+    # Define parsing rules for statement blocks.
+    @_('"{" VariableDecls Stmts "}"')
     def StmtBlock(self, p):
-        print("Found StmtBlock")
+        print("Found Statement Block")
+        return p
 
-    @_('VariableDecl VariableDeclList', '')
-    def VariableDeclList(self, p):
-        print("Found VariableDeclList")
+    # Define parsing rules for formal parameters.
+    @_('Variables', 'Epsilon')
+    def Formals(self, p):
+        print('Found Formal Parameters')
+        return p
 
-    @_('Stmt StmtList', '')
-    def StmtList(self, p):
-        print("Found StmtList")
+    @_('Variable "," Variables ', 'Variable')
+    def Variables(self, p):
+        return p
 
-    @_('ExprStmt', 'IfStmt', 'WhileStmt', 'ForStmt', 'BreakStmt', 'ReturnStmt', 'OutputStmt', 'StmtBlock')
+    @_('VariableDecl VariableDecls', 'Epsilon')
+    def VariableDecls(self, p):
+        return p
+
+    @_('Stmt Stmts', 'Epsilon')
+    def Stmts(self, p):
+        return p
+
+    # Define parsing rules for statements, including expressions, loops, and control flow statements.
+    @_('ExprQ ";"', 'IfStmt', 'WhileStmt', 'ForStmt', 'BreakStmt', 'ReturnStmt', 'OutputStmt', 'StmtBlock')
     def Stmt(self, p):
-        print(f"Found Stmt: {p[0]}")
+        print("Found Statement")
+        return p
 
-    @_('Expr ";"')
-    def ExprStmt(self, p):
-        print("Found ExprStmt")
+    @_('Expr', 'Epsilon')
+    def ExprQ(self, p):
+        return p
 
-    @_('IF "(" Expr ")" Stmt %prec IF')
+    # Define parsing rules for if statements.
+    @_('IF "(" Expr ")" Stmt ElseQ')
     def IfStmt(self, p):
         print("Found If Statement")
+        return p
 
-    @_('IF "(" Expr ")" Stmt ELSE Stmt')
-    def IfStmt(self, p):
-        print("Found If-Else Statement")
+    @_('ELSE Stmt', 'Epsilon')
+    def ElseQ(self, p):
+        return p
 
-    @_('WHILE "(" Expr ")" Stmt')
-    def WhileStmt(self, p):
-        print("Found WhileStmt")
-
-    @_('FOR "(" ExprOpt ";" Expr ";" ExprOpt ")" Stmt')
+    # Define parsing rules for for statements.
+    @_('FOR "(" ExprQ ";" Expr ";" ExprQ ")" Stmt ')
     def ForStmt(self, p):
-        print("Found ForStmt")
+        print("Found For Statement")
+        return p
 
-    @_('Expr', '')
-    def ExprOpt(self, p):
-        return p[0] if p else None
+    # Define parsing rules for while statements.
+    @_('WHILE "(" Expr ")" Stmt ')
+    def WhileStmt(self, p):
+        print("Found While Statement")
+        return p
 
-    @_('RETURN Expr ";"', 'RETURN ";"')
-    def ReturnStmt(self, p):
-        print("Found ReturnStmt")
-
+    # Define parsing rules for break statements.
     @_('BREAK ";"')
     def BreakStmt(self, p):
-        print("Found BreakStmt")
+        print("Found Break Statement")
+        return p
 
-    @_('OUTPUT "(" ExprList ")" ";"')
+    # Define parsing rules for return statements.
+    @_('RETURN ExprQ ";"')
+    def ReturnStmt(self, p):
+        print("Found Return Statement")
+        return p
+
+    # Define parsing rules for output statements.
+    @_('OUTPUT "(" Exprs ")"')
     def OutputStmt(self, p):
-        print("Found OutputStmt")
+        print("Found Output Statement")
+        return p
 
-    @_('Expr')
-    def ExprList(self, p):
-        return [p.Expr]
+    @_('Expr "," Exprs ', 'Expr')
+    def Exprs(self, p):
+        return p
 
-    @_('Expr "," ExprList')
-    def ExprList(self, p):
-        return [p.Expr] + p.ExprList
-
-    @_('IDENT "=" Expr',
-       'Expr OR Expr',
-       'Expr AND Expr',
-       'Expr EQ Expr',
-       'Expr NE Expr',
-       'Expr "<" Expr',
-       'Expr ">" Expr',
-       'Expr LE Expr',
-       'Expr GE Expr',
-       'Expr "+" Expr',
-       'Expr "-" Expr',
-       'Expr "*" Expr',
-       'Expr "/" Expr',
-       'Expr "%" Expr',
-       '"-" Expr %prec UMINUS',
-       '"!" Expr',
-       '"(" Expr ")"',
-       'IDENT',
-       'Constant',
-       'Call',
-       'INPUTINT "(" ")"',
-       'INPUTLINE "(" ")"')
+    @_('IDENTIFIER "=" Expr', 'IDENTIFIER', 'Constant', 'Call', ' "(" Expr ")" ',
+    'Expr "+" Expr', 'Expr "-" Expr', 'Expr "*" Expr', 'Expr "/" Expr', 'Expr "%" Expr', 'Expr "<" Expr', 'Expr LE Expr',
+    'Expr ">" Expr', 'Expr GE Expr', 'Expr EQ Expr', 'Expr NE Expr', 'Expr AND Expr', 'Expr OR Expr', '"!" Expr',
+    '"-" Expr %prec UMINUS',
+    'INPUTINT "(" ")"', 'INPUTLINE "(" ")"')
     def Expr(self, p):
-        print("Found Expr")
+        print('Found Expression')
+        return p
 
-    @_('IDENT "(" Actuals ")"')
+    # Define parsing rules for function calls.
+    @_('IDENTIFIER "(" Actuals ")"')
     def Call(self, p):
-        print("Found Call")
+        print("Found Function Call")
+        return p
 
-    @_('ExprList', '')
+    # Define parsing rules for actual parameters.
+    @_('Exprs', 'Epsilon')
     def Actuals(self, p):
-        print("Found Actuals")
+        print("Found Actual Parameters")
+        return p
 
-    @_('INT_CONST', 'DOUBLE_CONST', 'BOOL_CONST', 'STRING_CONST', 'NULL')
+    # Define parsing rules for constants.
+    @_('intConstant ', ' doubleConstant ', ' boolConstant ', ' stringConstant ', ' null')
     def Constant(self, p):
-        print(f"Found Constant: {p[0]}")
+        print("Found Constant")
+        return p
 
-    def error(self, p):
-        if p:
-            print(f"Found syntax error at {p.type}")
-        else:
-            print("Found syntax error at EOF")
+    @_('STRING')
+    def stringConstant(self, p):
+        return p
 
-def debug_print_tokens(lexer, data):
-    for token in lexer.tokenize(data):
-        print(f"Token: type={token.type}, value={token.value}, line={token.lineno}, index={token.index}")
+    @_('NULL')
+    def null(self, p):
+        return p
+
+    @_('INT')
+    def intConstant(self, p):
+        return p
+
+    @_('DOUBLE')
+    def doubleConstant(self, p):
+        return p
+
+    @_('BOOL')
+    def boolConstant(self, p):
+        return p
+
+    @_('IDENTIFIER')
+    def Decl(self, p):
+        try:
+            return self.IDENTIFIERs[p.IDENTIFIER]
+        except LookupError:
+            print("Undefined IDENT '%s'" % p.IDENTIFIER)
+            return 0
+
+    @_('')
+    def Epsilon(self, p):
+        pass
 
 if __name__ == '__main__':
+
+    # Expects DLang source from file
+    
+        # If there are two command-line arguments (including the script name)
+        # Create instances of the lexer and parser
     lexer = DLangLexer()
     parser = DLangParser()
+        # Open the file provided as a command-line argument
+    with open('input.txt', 'r') as source:
+    # Read the content of the file
+        dlang_code = source.read()
+        try:
+        # Attempt to parse the DLang code using the lexer and parser
+            parser.parse(lexer.tokenize(dlang_code))
+        except EOFError:
+                # If the end of the file is reached unexpectedly, exit with error code 1
+            exit(1)
     
-    print("DLang Parser")
-    print("Enter 'file' to read from 'input.txt', or 'exit' to quit.")
-    
-    while True:
-        user_input = input("Enter your choice (file/exit): ").lower()
-        if user_input == 'exit':
-            print("Exiting the program.")
-            break
-        elif user_input == 'file':
-            try:
-                with open('input.txt', 'r') as file:
-                    data = file.read()
-                print("Contents of 'input.txt':")
-                print(data)
-                print("\nTokenizing input:")
-                debug_print_tokens(lexer, data)
-                print("\nParsing code from 'input.txt':")
-                result = parser.parse(lexer.tokenize(data))
-                print("Parsing completed successfully!")
-            except FileNotFoundError:
-                print("Error: 'input.txt' not found.")
-            except Exception as e:
-                print(f"Parsing failed: {str(e)}")
-        else:
-            print("Invalid choice. Please enter 'file' or 'exit'.")
