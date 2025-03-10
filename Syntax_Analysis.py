@@ -4,7 +4,7 @@ from sly import Lexer, Parser
 class DLangLexer(Lexer):
 
     # Define names of tokens
-    tokens ={LE, GE, EQ, NE, AND, OR, INT, DOUBLE, STRING, IDENTIFIER, NOTHING, INTK, DOUBLEK, BOOL, BOOLK, STRINGK, INTERFACE, NULL, FOR, WHILE, IF, ELSE, RETURN, BREAK, ARRAYINSTANCE, OUTPUT, INPUTINT, INPUTLINE}
+    tokens ={LE, GE, EQ, NE, AND, OR, INT, DOUBLE, STRING, IDENTIFIER, NOTHING, INTK, DOUBLEK, BOOL, BOOLK, STRINGK, NULL, FOR, WHILE, IF, ELSE, RETURN, BREAK, OUTPUT, INPUTINT, INPUTLINE}
     
     # Single-character literals can be recognized without token names
     # If you use separate tokens for each literal, that is fine too
@@ -54,6 +54,7 @@ class DLangLexer(Lexer):
     # IDENTIFIER lexemes overlap with keywords.
     # To avoid confusion, we do token remaping.
     # Alternatively, you can specify each keywork before IDENTIFIER
+
     IDENTIFIER['nothing'] = NOTHING
     IDENTIFIER['int'] = INTK
     IDENTIFIER['double'] = DOUBLEK
@@ -67,11 +68,9 @@ class DLangLexer(Lexer):
     IDENTIFIER['if'] = IF
     IDENTIFIER['else'] = ELSE
     IDENTIFIER['return'] = RETURN
-    IDENTIFIER['ArrayInstance'] = ARRAYINSTANCE
     IDENTIFIER['Output'] = OUTPUT
     IDENTIFIER['InputInt'] = INPUTINT
     IDENTIFIER['InputLine'] = INPUTLINE
-
 
     def error(self,t):
         print ("Invalid character '%s'" % t.value[0])
@@ -100,7 +99,6 @@ class DLangParser(Parser):
     
     @_('Decl Decls ','Decl')
     def Decls(self, p):
-        #print(p)
         return p
     
 
@@ -113,7 +111,8 @@ class DLangParser(Parser):
     # VariableDecl -> Variable;
     @_('Variable ";"')
     def VariableDecl(self, p):
-        print('Found VariableDecl')
+        stmt_type = p._slice[0].type
+        print(f"Found VariableDecl {stmt_type}")
         return p
 
     # Variable -> Type ident
@@ -132,7 +131,7 @@ class DLangParser(Parser):
         print('Found Function Declaration')
         return p
 
-    # Define parsing rules for statement blocks.
+    # Define parsing rules for statement break.
     @_('"{" VariableDecls Stmts "}"')
     def StmtBlock(self, p):
         print("Found Statement Block")
@@ -141,6 +140,7 @@ class DLangParser(Parser):
     # Define parsing rules for formal parameters.
     @_('Variables', 'Epsilon')
     def Formals(self, p):
+        # print(f'Found Formal Parameters {p.Variables}')
         print('Found Formal Parameters')
         return p
 
@@ -159,7 +159,9 @@ class DLangParser(Parser):
     # Define parsing rules for statements, including expressions, loops, and control flow statements.
     @_('ExprQ ";"', 'IfStmt', 'WhileStmt', 'ForStmt', 'BreakStmt', 'ReturnStmt', 'OutputStmt', 'StmtBlock')
     def Stmt(self, p):
-        print("Found Statement")
+        # stmt_type = p[0].__class__.__name__
+        # stmt_type = p._slice[0].value[0]
+        # print(f"Found Statement: {stmt_type}")
         return p
 
     @_('Expr', 'Epsilon')
@@ -191,7 +193,7 @@ class DLangParser(Parser):
     # Define parsing rules for break statements.
     @_('BREAK ";"')
     def BreakStmt(self, p):
-        print("Found Break Statement")
+        print(f"Found Break Statement {p.Variables}")
         return p
 
     # Define parsing rules for return statements.
@@ -216,7 +218,8 @@ class DLangParser(Parser):
     '"-" Expr %prec UMINUS',
     'INPUTINT "(" ")"', 'INPUTLINE "(" ")"')
     def Expr(self, p):
-        print('Found Expression')
+        stmt_type = p._slice[0].type
+        print(f'Found Expression {stmt_type}')
         return p
 
     # Define parsing rules for function calls.
@@ -234,7 +237,8 @@ class DLangParser(Parser):
     # Define parsing rules for constants.
     @_('intConstant ', ' doubleConstant ', ' boolConstant ', ' stringConstant ', ' null')
     def Constant(self, p):
-        print("Found Constant")
+        stmt_type = p._slice[0].type
+        print(f"Found Constant {stmt_type}")
         return p
 
     @_('STRING')
@@ -272,19 +276,18 @@ class DLangParser(Parser):
 if __name__ == '__main__':
 
     # Expects DLang source from file
-    
-        # If there are two command-line arguments (including the script name)
-        # Create instances of the lexer and parser
+    # If there are two command-line arguments (including the script name)
+    # Create instances of the lexer and parser
     lexer = DLangLexer()
     parser = DLangParser()
-        # Open the file provided as a command-line argument
-    with open('input.txt', 'r') as source:
-    # Read the content of the file
+    # Open the file provided as a command-line argument
+    with open(sys.argv[1]) as source:
+        # Read the content of the file
         dlang_code = source.read()
         try:
-        # Attempt to parse the DLang code using the lexer and parser
+            # Attempt to parse the DLang code using the lexer and parser
             parser.parse(lexer.tokenize(dlang_code))
         except EOFError:
-                # If the end of the file is reached unexpectedly, exit with error code 1
+            # If the end of the file is reached unexpectedly, exit with error code 1
             exit(1)
     
