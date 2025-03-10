@@ -18,8 +18,8 @@ pip install sly
 
 ## Usage
 1. Saved the parser code as `Syntax_Analysis.py`.
-2. Created an `input.txt` file in the same directory with your DLang code.
-3. Ran the code
+2. Created an `test-parser.dlang` file in the same directory with your DLang code.
+3. Ran the code with `python Syntax_Analysis.py test-parser.dlang`
 
 python CIS-574-Syntax_Analysis.py
 
