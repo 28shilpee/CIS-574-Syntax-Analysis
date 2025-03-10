@@ -111,7 +111,7 @@ class DLangParser(Parser):
     # VariableDecl -> Variable;
     @_('Variable ";"')
     def VariableDecl(self, p):
-        stmt_type = p._slice[0].type
+        stmt_type = p._slice[0].value
         print(f"Found VariableDecl {stmt_type}")
         return p
 
@@ -218,7 +218,7 @@ class DLangParser(Parser):
     '"-" Expr %prec UMINUS',
     'INPUTINT "(" ")"', 'INPUTLINE "(" ")"')
     def Expr(self, p):
-        stmt_type = p._slice[0].type
+        stmt_type = p._slice[0].value
         print(f'Found Expression {stmt_type}')
         return p
 
@@ -237,7 +237,7 @@ class DLangParser(Parser):
     # Define parsing rules for constants.
     @_('intConstant ', ' doubleConstant ', ' boolConstant ', ' stringConstant ', ' null')
     def Constant(self, p):
-        stmt_type = p._slice[0].type
+        stmt_type = p._slice[0].value
         print(f"Found Constant {stmt_type}")
         return p
 
